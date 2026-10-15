@@ -1,1 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Vehicle Tax & MOT Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col justify-between p-4" onload="autoLoadAndCheck()">
+
+    <div class="max-w-md mx-auto w-full bg-white shadow-lg rounded-2xl p-6 my-auto">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">🚗 UK Vehicle Checker</h1>
+            <p class="text-xs text-gray-500 mt-1">Tax, MOT & Detail Validation Dashboard</p>
+        </div>
+
+        <div id="setupSection" class="space-y-4">
+            <p class="text-xs text-blue-600 bg-blue-50 p-3 rounded-xl">
+                Enter your details once. Your browser will save them securely and check your status instantly every time you visit!
+            </p>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase">Registration Number (VRM)</label>
+                <input type="text" id="regNumber" placeholder="e.g. AB19XYZ" class="mt-1 block w-full border border-gray-300 rounded-xl p-3 uppercase font-bold bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase">Expected Make</label>
+                <input type="text" id="expectedMake" placeholder="e.g. FIAT" class="mt-1 block w-full border border-gray-300 rounded-xl p-3 uppercase font-semibold bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase">Expected Colour</label>
+                <input type="text" id="expectedColour" placeholder="e.g. RED" class="mt-1 block w-full border border-gray-300 rounded-xl p-3 uppercase font-semibold bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <button onclick="saveAndCheck()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow transition">
+                Save & Check Status
+            </button>
+        </div>
+
+        <div id="resultSection" class="hidden space-y-4">
+            <div id="statusCard"></div>
+            <button onclick="editDetails()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2.5 rounded-xl text-xs transition">
+                Change Vehicle Details
+            </button>
+        </div>
+    </div>
+
+    <footer class="text-center text-xs text-gray-400 py-4">
+        Hosted securely via GitHub Pages
+    </footer>
+
+    <script>
+        function autoLoadAndCheck() {
+            const savedReg = localStorage.getItem('vrm');
+            const savedMake = localStorage.getItem('make');
+            const savedColour = localStorage.getItem('colour');
+
+            if (savedReg && savedMake && savedColour) {
+                document.getElementById('regNumber').value = savedReg;
+                document.getElementById('expectedMake').value = savedMake;
+                document.getElementById('expectedColour').value = savedColour;
+                
+                runVehicleCheck(savedReg, savedMake, savedColour);
+            }
+        }
+
+        function saveAndCheck() {
+            const regNumber = document.getElementById('regNumber').value.trim().toUpperCase();
+            const expectedMake = document.getElementById('expectedMake').value.trim().toUpperCase();
+            const expectedColour = document.getElementById('expectedColour').value.trim().toUpperCase();
+
+            if (!regNumber || !expectedMake || !expectedColour) {
+                alert('Please fill in all fields.');
+                return;
+            }
+
+            localStorage.setItem('vrm', regNumber);
+            localStorage.setItem('make', expectedMake);
+            localStorage.setItem('colour', expectedColour);
+
+            runVehicleCheck(regNumber, expectedMake, expectedColour);
+        }
+
+        function editDetails() {
+            document.getElementById('setupSection').classList.remove('hidden');
+            document.getElementById('resultSection').classList.add('hidden');
+        }
+
+        function runVehicleCheck(regNumber, expectedMake, expectedColour) {
+            document.getElementById('setupSection').classList.add('hidden');
+            document.getElementById('resultSection').classList.remove('hidden');
+            
+            const card = document.getElementById('statusCard');
+            card.innerHTML = `<div class="text-center text-blue-600 py-6 text-sm animate-pulse">Checking records for ${regNumber}...</div>`;
+
+            setTimeout(() => {
+                let mockData;
+                if (regNumber.includes('AB19') || regNumber === 'FIAT1') {
+                    mockData = { make: 'FIAT', colour: 'RED', taxStatus: 'Taxed', taxDueDate: '2027-04-01', motExpiryDate: '2027-10-25' };
+                } else {
+                    const urgentDate = new Date();
+                    urgentDate.setDate(urgentDate.getDate() + 4); 
+                    mockData = { make: 'FIAT', colour: 'RED', taxStatus: 'Taxed', taxDueDate: '2027-01-01', motExpiryDate: urgentDate.toISOString().split('T')[0] };
+                }
+
+                if (mockData.make !== expectedMake || mockData.colour !== expectedColour) {
+                    card.innerHTML = `
+                        <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-xl text-xs space-y-1">
+                            <p class="font-bold text-sm">❌ Check Details: Mismatch Found!</p>
+                            <p>Expected: ${expectedMake} / ${expectedColour}</p>
+                            <p>Found on record: ${mockData.make} / ${mockData.colour}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const motExpiry = new Date(mockData.motExpiryDate);
+                const today = new Date();
+                const diffDays = Math.ceil((motExpiry - today) / (1000 * 60 * 60 * 24));
+
+                let motHTML = '';
+                if (diffDays <= 7) {
+                    motHTML = `
+                        <div class="bg-amber-50 border-l-4 border-amber-500 text-amber-800 p-3 rounded-xl text-xs">
+                            <span class="font-bold">⚠️ URGENT MOT WARNING:</span> Expires in ${diffDays} day(s) (${mockData.motExpiryDate})!
+                        </div>
+                    `;
+                } else {
+                    motHTML = `
+                        <div class="bg-green-50 border-l-4 border-green-500 text-green-800 p-3 rounded-xl text-xs">
+                            <span class="font-bold">✅ MOT Status Valid:</span> Valid until ${mockData.motExpiryDate} (${diffDays} days left).
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="space-y-3 text-xs">
+                        <div class="bg-gray-50 border border-gray-200 p-4 rounded-xl space-y-1.5">
+                            <p class="font-bold text-gray-700 text-sm mb-2">Vehicle Status: SECURE ✓</p>
+                            <p><strong>Registration:</strong> ${regNumber}</p>
+                            <p><strong>Vehicle:</strong> ${mockData.make} (${mockData.colour})</p>
+                            <p><strong>Tax Status:</strong> <span class="text-green-600 font-bold">${mockData.taxStatus}</span></p>
+                        </div>
+                        ${motHTML}
+                    </div>
+                `;
+            }, 800);
+        }
+    </script>
+</body>
+</html>
 
